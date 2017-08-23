@@ -47,8 +47,8 @@ def get_model(point_cloud, is_training, bn_decay=None):
     points_feat1_concat = tf.concat(axis=3, values=[points_feat1, pc_feat1_expand])
     
     # VAE
-    z_mu = utils.linear(points_feat1_concat, 128, name='mu')[0]
-    z_log_sigma = 0.5 * utils.linear(points_feat1_concat, 128, name='log_sigma')[0]
+    z_mu = utils.linear(tf.squeeze(points_feat1_concat), 128, name='mu')[0]
+    z_log_sigma = 0.5 * utils.linear(tf.squeeze(points_feat1_concat), 128, name='log_sigma')[0]
     epsilon = tf.random_normal(
         tf.stack([tf.shape(points_feat1_concat)[0], 128]))
     points_feat1_concat = z_mu + tf.multiply(epsilon, tf.exp(z_log_sigma))
@@ -57,6 +57,7 @@ def get_model(point_cloud, is_training, bn_decay=None):
     loss_z = -0.5 * tf.reduce_sum(
         1.0 + 2.0 * z_log_sigma -
         tf.square(z_mu) - tf.exp(2.0 * z_log_sigma), 1)
+    points_feat1_concat = tf.tile(tf.reshape(points_feat1_concat, [batch_size, 1, 1, -1]), [1, num_point, 1, 1])
     # Finish
 
     # CONV 
