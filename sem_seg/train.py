@@ -133,8 +133,8 @@ def train():
             tf.summary.scalar('bn_decay', bn_decay)
 
             # Get model and loss 
-            pred = get_model(pointclouds_pl, is_training_pl, bn_decay=bn_decay)
-            loss = get_loss(pred, labels_pl)
+            pred, loss_z = get_model(pointclouds_pl, is_training_pl, bn_decay=bn_decay)
+            loss = get_loss(pred, labels_pl, loss_z)
             tf.summary.scalar('loss', loss)
 
             correct = tf.equal(tf.argmax(pred, 2), tf.to_int64(labels_pl))
