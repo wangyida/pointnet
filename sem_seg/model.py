@@ -76,7 +76,7 @@ def get_loss(pred, label, loss_z):
     """ pred: B,N,13
         label: B,N """
     loss = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=pred, labels=label)
-    return tf.reduce_mean(loss+loss_z)
+    return tf.reduce_mean(loss) + tf.reduce_mean(loss_z)
 
 if __name__ == "__main__":
     with tf.Graph().as_default():
