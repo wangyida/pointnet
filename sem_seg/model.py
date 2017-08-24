@@ -38,28 +38,28 @@ def get_model(point_cloud, is_training, bn_decay=None):
     pc_feat1 = tf_util.max_pool2d(points_feat1, [num_point,1], padding='VALID', scope='maxpool1')
     # FC
     pc_feat1 = tf.reshape(pc_feat1, [batch_size, -1])
-    pc_feat1 = tf_util.fully_connected(pc_feat1, 256, bn=True, is_training=is_training, scope='fc1', bn_decay=bn_decay)
-    pc_feat1 = tf_util.fully_connected(pc_feat1, 128, bn=True, is_training=is_training, scope='fc2', bn_decay=bn_decay)
-    print(pc_feat1)
-   
-    # CONCAT 
-    pc_feat1_expand = tf.tile(tf.reshape(pc_feat1, [batch_size, 1, 1, -1]), [1, 1, 1, 1])
-    points_feat1_concat = tf.concat(axis=3, values=[points_feat1, pc_feat1_expand])
     
     # VAE
-    z_mu = utils.linear(tf.squeeze(points_feat1_concat), 128, name='mu')[0]
-    z_log_sigma = 0.5 * utils.linear(tf.squeeze(points_feat1_concat), 128, name='log_sigma')[0]
+    z_mu = utils.linear(pc_feat1, 64, name='mu')[0]
+    z_log_sigma = 0.5 * utils.linear(pc_feat1, 64, name='log_sigma')[0]
     epsilon = tf.random_normal(
-        tf.stack([tf.shape(points_feat1_concat)[0], 128]))
-    points_feat1_concat = z_mu + tf.multiply(epsilon, tf.exp(z_log_sigma))
+        tf.stack([tf.shape(pc_feat1)[0], 64]))
+    pc_feat1 = z_mu + tf.multiply(epsilon, tf.exp(z_log_sigma))
     
     # variational lower bound, kl-divergence
     loss_z = -0.5 * tf.reduce_sum(
         1.0 + 2.0 * z_log_sigma -
         tf.square(z_mu) - tf.exp(2.0 * z_log_sigma), 1)
-    points_feat1_concat = tf.tile(tf.reshape(points_feat1_concat, [batch_size, 1, 1, -1]), [1, num_point, 1, 1])
     # Finish
 
+    pc_feat1 = tf_util.fully_connected(pc_feat1, 256, bn=True, is_training=is_training, scope='fc1', bn_decay=bn_decay)
+    pc_feat1 = tf_util.fully_connected(pc_feat1, 128, bn=True, is_training=is_training, scope='fc2', bn_decay=bn_decay)
+    print(pc_feat1)
+   
+    # CONCAT 
+    pc_feat1_expand = tf.tile(tf.reshape(pc_feat1, [batch_size, 1, 1, -1]), [1, num_point, 1, 1])
+    points_feat1_concat = tf.concat(axis=3, values=[points_feat1, pc_feat1_expand])
+    
     # CONV 
     net = tf_util.conv2d(points_feat1_concat, 512, [1,1], padding='VALID', stride=[1,1],
                          bn=True, is_training=is_training, scope='conv6')
