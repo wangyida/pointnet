@@ -7,6 +7,7 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.dirname(BASE_DIR))
 sys.path.append(os.path.join(BASE_DIR, '../utils'))
 import tf_util
+import utils
 
 
 def get_transform_K(inputs, is_training, bn_decay=None, K = 3):
@@ -109,6 +110,20 @@ def get_model(point_cloud, input_label, is_training, cat_num, part_num, \
 
     # classification network
     net = tf.reshape(out_max, [batch_size, -1])
+
+    # VAE
+    z_mu = utils.linear(net, 64, name='mu')[0]
+    z_log_sigma = 0.5 * utils.linear(net, 64, name='log_sigma')[0]
+    epsilon = tf.random_normal(
+        tf.stack([tf.shape(net)[0], 64]))
+    net = z_mu + tf.multiply(epsilon, tf.exp(z_log_sigma))
+    
+    # variational lower bound, kl-divergence
+    loss_z = -0.5 * tf.reduce_sum(
+        1.0 + 2.0 * z_log_sigma -
+        tf.square(z_mu) - tf.exp(2.0 * z_log_sigma), 1)
+    # Finish
+
     net = tf_util.fully_connected(net, 256, bn=True, is_training=is_training, scope='cla/fc1', bn_decay=bn_decay)
     net = tf_util.fully_connected(net, 256, bn=True, is_training=is_training, scope='cla/fc2', bn_decay=bn_decay)
     net = tf_util.dropout(net, keep_prob=0.7, is_training=is_training, scope='cla/dp1')
@@ -134,11 +149,12 @@ def get_model(point_cloud, input_label, is_training, cat_num, part_num, \
 
     net2 = tf.reshape(net2, [batch_size, num_point, part_num])
 
-    return net, net2, end_points
+    return net, net2, end_points, loss_z
 
-def get_loss(l_pred, seg_pred, label, seg, weight, end_points):
+def get_loss(l_pred, seg_pred, label, seg, weight, end_points, loss_z):
     per_instance_label_loss = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=l_pred, labels=label)
-    label_loss = tf.reduce_mean(per_instance_label_loss)
+    label_loss = tf.reduce_mean(per_instance_label_loss) + tf.reduce_mean(loss_z) + tf.nn.l2_loss(l_pred-tf.one_hot(label, 16))
+
 
     # size of seg_pred is batch_size x point_num x part_cat_num
     # size of seg is batch_size x point_num
