@@ -131,7 +131,7 @@ def predict():
         is_training_ph = tf.placeholder(tf.bool, shape=())
 
         # simple model
-        pred, seg_pred, end_points = model.get_model(pointclouds_ph, input_label_ph, \
+        pred, seg_pred, end_points, loss_z = model.get_model(pointclouds_ph, input_label_ph, \
                 cat_num=NUM_OBJ_CATS, part_num=NUM_PART_CATS, is_training=is_training_ph, \
                 batch_size=batch_size, num_point=point_num, weight_decay=0.0, bn_decay=None)
         
