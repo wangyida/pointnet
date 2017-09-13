@@ -40,10 +40,10 @@ def get_model(point_cloud, is_training, bn_decay=None):
     pc_feat1 = tf.reshape(pc_feat1, [batch_size, -1])
     
     # VAE
-    z_mu = utils.linear(pc_feat1, 64, name='mu')[0]
-    z_log_sigma = 0.5 * utils.linear(pc_feat1, 64, name='log_sigma')[0]
+    z_mu = utils.linear(pc_feat1, 512, name='mu')[0]
+    z_log_sigma = 0.5 * utils.linear(pc_feat1, 512, name='log_sigma')[0]
     epsilon = tf.random_normal(
-        tf.stack([tf.shape(pc_feat1)[0], 64]))
+        tf.stack([tf.shape(pc_feat1)[0], 512]))
     pc_feat1 = z_mu + tf.multiply(epsilon, tf.exp(z_log_sigma))
     
     # variational lower bound, kl-divergence
