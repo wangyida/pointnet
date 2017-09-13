@@ -44,8 +44,8 @@ def evaluate():
         is_training_pl = tf.placeholder(tf.bool, shape=())
 
         # simple model
-        pred = get_model(pointclouds_pl, is_training_pl)
-        loss = get_loss(pred, labels_pl)
+        pred, loss_z = get_model(pointclouds_pl, is_training_pl)
+        loss = get_loss(pred, labels_pl, loss_z)
         pred_softmax = tf.nn.softmax(pred)
  
         # Add ops to save and restore all the variables.
