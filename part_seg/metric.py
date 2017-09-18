@@ -10,6 +10,8 @@ def sparse_ml(
 
     # feat should be a batch of vectors, so the rank should be 2
     tf.assert_rank(feat, 2)
+    batch_size = tf.get_shape(feat).as_list()[0]
+
     with tf.variable_scope('Anchors'):
         # Nebula 3D with shape [n_cluster, n_codes]
         nebula3d = tf.Variable(
@@ -76,14 +78,14 @@ def sparse_ml(
                     onehots,
                     tf.transpose(onehots)),
                 tf.diag(
-                    tf.ones_like(label)))
+                    tf.ones([batch_size])))
 
         negative = tf.subtract(
-                tf.ones_like(positive),
+                tf.ones([batch_size, batch_size]),
                 tf.add(
                     positive,
                     tf.diag(
-                        tf.ones_like(label))))
+                        tf.ones([batch_size]))))
 
         # Loss function in 2D space based on positive relationships
         loss_positive = tf.reduce_mean(
