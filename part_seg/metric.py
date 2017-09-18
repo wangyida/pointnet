@@ -10,7 +10,7 @@ def sparse_ml(
 
     # feat should be a batch of vectors, so the rank should be 2
     tf.assert_rank(feat, 2)
-    batch_size = tf.get_shape(feat).as_list()[0]
+    batch_size = feat.get_shape().as_list()[0]
 
     with tf.variable_scope('Anchors'):
         # Nebula 3D with shape [n_cluster, n_codes]
