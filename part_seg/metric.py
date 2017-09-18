@@ -10,7 +10,6 @@ def sparse_ml(
 
     # feat should be a batch of vectors, so the rank should be 2
     tf.assert_rank(feat, 2)
-    batch_size = feat.get_shape().as_list()[0]
 
     with tf.variable_scope('Anchors'):
         # Nebula 3D with shape [n_cluster, n_codes]
@@ -24,7 +23,7 @@ def sparse_ml(
                     tf.Variable(
                         tf.truncated_normal([n_clusters, 1]))))
 
-        # Nebula 1D is a scalar
+        # Nebula 1D is a scalar [1]
         nebula1d = tf.sigmoid(tf.reduce_mean(
                 tf.matmul(
                     nebula2d,
@@ -73,19 +72,17 @@ def sparse_ml(
                 2)
 
         # Here I remove the self similarity by add a diagnal martrix of 1
+        '''
         positive = tf.subtract(
                 tf.matmul(
                     onehots,
                     tf.transpose(onehots)),
                 tf.diag(
                     tf.ones([batch_size])))
+        '''
+        positive = tf.matmul(onehots, tf.transpose(onehots))
 
-        negative = tf.subtract(
-                tf.ones([batch_size, batch_size]),
-                tf.add(
-                    positive,
-                    tf.diag(
-                        tf.ones([batch_size]))))
+        negative = tf.subtract(tf.ones_like(positive), positive)
 
         # Loss function in 2D space based on positive relationships
         loss_positive = tf.reduce_mean(
