@@ -8,7 +8,7 @@ sys.path.append(os.path.dirname(BASE_DIR))
 sys.path.append(os.path.join(BASE_DIR, '../utils'))
 import tf_util
 import utils
-
+from metric import sparse_ml
 
 def get_transform_K(inputs, is_training, bn_decay=None, K = 3):
     """ Transform Net, input is BxNx1xK gray image
@@ -112,16 +112,21 @@ def get_model(point_cloud, input_label, is_training, cat_num, part_num, \
     net = tf.reshape(out_max, [batch_size, -1])
 
     # VAE
-    z_mu = utils.linear(net, 64, name='mu')[0]
-    z_log_sigma = 0.5 * utils.linear(net, 64, name='log_sigma')[0]
+    z_mu = utils.linear(net, 256, name='mu')[0]
+    z_log_sigma = 0.5 * utils.linear(net, 256, name='log_sigma')[0]
     epsilon = tf.random_normal(
-        tf.stack([tf.shape(net)[0], 64]))
+        tf.stack([tf.shape(net)[0], 256]))
     net = z_mu + tf.multiply(epsilon, tf.exp(z_log_sigma))
     
     # variational lower bound, kl-divergence
     loss_z = -0.5 * tf.reduce_sum(
         1.0 + 2.0 * z_log_sigma -
         tf.square(z_mu) - tf.exp(2.0 * z_log_sigma), 1)
+
+    # saprse metric learning
+    loss_1d, loss_2d, loss_3d, nebula1d, nebula2d, nebula3d = sparse_ml(
+            16, 256, net, input_label, info_type='binary')
+    loss_m = loss_1d + loss_2d + loss_3d
     # Finish
 
     net = tf_util.fully_connected(net, 256, bn=True, is_training=is_training, scope='cla/fc1', bn_decay=bn_decay)
@@ -149,11 +154,11 @@ def get_model(point_cloud, input_label, is_training, cat_num, part_num, \
 
     net2 = tf.reshape(net2, [batch_size, num_point, part_num])
 
-    return net, net2, end_points, loss_z
+    return net, net2, end_points, loss_z, loss_m
 
-def get_loss(l_pred, seg_pred, label, seg, weight, end_points, loss_z):
+def get_loss(l_pred, seg_pred, label, seg, weight, end_points, loss_z, loss_m):
     per_instance_label_loss = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=l_pred, labels=label)
-    label_loss = tf.reduce_mean(per_instance_label_loss) + tf.reduce_mean(loss_z) + tf.nn.l2_loss(l_pred-tf.one_hot(label, 16))
+    label_loss = tf.reduce_mean(per_instance_label_loss) + tf.reduce_mean(loss_z) + tf.nn.l2_loss(l_pred-tf.one_hot(label, 16)) + loss_m
 
 
     # size of seg_pred is batch_size x point_num x part_cat_num

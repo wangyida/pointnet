@@ -124,7 +124,7 @@ def train():
             batch_op = tf.summary.scalar('batch_number', batch)
             bn_decay_op = tf.summary.scalar('bn_decay', bn_decay)
  
-            labels_pred, seg_pred, end_points, loss_z = model.get_model(pointclouds_ph, input_label_ph, \
+            labels_pred, seg_pred, end_points, loss_z, loss_m = model.get_model(pointclouds_ph, input_label_ph, \
                     is_training=is_training_ph, bn_decay=bn_decay, cat_num=NUM_CATEGORIES, \
                     part_num=NUM_PART_CATS, batch_size=batch_size, num_point=point_num, weight_decay=FLAGS.wd)
 
@@ -132,7 +132,7 @@ def train():
             # In model.get_loss, we define the total loss to be weighted sum of the classification and segmentation losses.
             # Here, we only train for segmentation network. Thus, we set weight to be 1.0.
             loss, label_loss, per_instance_label_loss, seg_loss, per_instance_seg_loss, per_instance_seg_pred_res  \
-                = model.get_loss(labels_pred, seg_pred, labels_ph, seg_ph, 1.0, end_points, loss_z)
+                = model.get_loss(labels_pred, seg_pred, labels_ph, seg_ph, 1.0, end_points, loss_z, loss_m)
 
             total_training_loss_ph = tf.placeholder(tf.float32, shape=())
             total_testing_loss_ph = tf.placeholder(tf.float32, shape=())
