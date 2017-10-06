@@ -8,6 +8,7 @@ sys.path.append(BASE_DIR)
 sys.path.append(os.path.join(BASE_DIR, '../utils'))
 import tf_util
 from transform_nets import input_transform_net, feature_transform_net
+from metric import sparse_ml
 
 def placeholder_inputs(batch_size, num_point):
     pointclouds_pl = tf.placeholder(tf.float32, shape=(batch_size, num_point, 3))
@@ -59,6 +60,25 @@ def get_model(point_cloud, is_training, bn_decay=None):
                              padding='VALID', scope='maxpool')
 
     net = tf.reshape(net, [batch_size, -1])
+
+    # VAE
+    z_mu = utils.linear(net, 256, name='mu')[0]
+    z_log_sigma = 0.5 * utils.linear(net, 256, name='log_sigma')[0]
+    epsilon = tf.random_normal(
+        tf.stack([tf.shape(net)[0], 256]))
+    net = z_mu + tf.multiply(epsilon, tf.exp(z_log_sigma))
+    
+    # variational lower bound, kl-divergence
+    loss_z = -0.5 * tf.reduce_sum(
+        1.0 + 2.0 * z_log_sigma -
+        tf.square(z_mu) - tf.exp(2.0 * z_log_sigma), 1)
+
+    # saprse metric learning
+    loss_1d, loss_2d, loss_3d, nebula1d, nebula2d, nebula3d = sparse_ml(
+            16, 256, net, input_label, info_type='binary')
+    loss_m = loss_1d + loss_2d + loss_3d
+    # Finish
+
     net = tf_util.fully_connected(net, 512, bn=True, is_training=is_training,
                                   scope='fc1', bn_decay=bn_decay)
     net = tf_util.dropout(net, keep_prob=0.7, is_training=is_training,
@@ -69,14 +89,17 @@ def get_model(point_cloud, is_training, bn_decay=None):
                           scope='dp2')
     net = tf_util.fully_connected(net, 40, activation_fn=None, scope='fc3')
 
-    return net, end_points
+    return net, end_points, loss_z, loss_m
 
 
-def get_loss(pred, label, end_points, reg_weight=0.001):
+
+def get_loss(pred, label, end_points, reg_weight=0.001, loss_z, loss_m):
     """ pred: B*NUM_CLASSES,
         label: B, """
     loss = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=pred, labels=label)
-    classify_loss = tf.reduce_mean(loss)
+    classify_loss = tf.reduce_mean(loss) + tf.reduce_mean(loss_z) + tf.nn.l2_loss(l_pred-tf.one_hot(label, 40)) + loss_m
+
+
     tf.summary.scalar('classify loss', classify_loss)
 
     # Enforce the transformation as orthogonal matrix
