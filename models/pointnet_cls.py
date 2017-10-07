@@ -62,6 +62,10 @@ def get_model(point_cloud, input_label, is_training, bn_decay=None):
 
     net = tf.reshape(net, [batch_size, -1])
 
+
+    net = tf_util.fully_connected(net, 512, bn=True, is_training=is_training,
+                                  scope='fc1', bn_decay=bn_decay)
+
     # VAE
     z_mu = utils.linear(net, 256, name='mu')[0]
     z_log_sigma = 0.5 * utils.linear(net, 256, name='log_sigma')[0]
@@ -80,8 +84,6 @@ def get_model(point_cloud, input_label, is_training, bn_decay=None):
     loss_m = loss_1d + loss_2d + loss_3d
     # Finish
 
-    net = tf_util.fully_connected(net, 512, bn=True, is_training=is_training,
-                                  scope='fc1', bn_decay=bn_decay)
     net = tf_util.dropout(net, keep_prob=0.7, is_training=is_training,
                           scope='dp1')
     net = tf_util.fully_connected(net, 256, bn=True, is_training=is_training,
