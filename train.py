@@ -105,7 +105,7 @@ def train():
 
             # Get model and loss 
             pred, end_points, loss_z, loss_m  = MODEL.get_model(pointclouds_pl, labels_pl, is_training_pl, bn_decay=bn_decay)
-            loss = MODEL.get_loss(pred, labels_pl, end_points, loss_z, loss_m )
+            loss = MODEL.get_loss(pred, labels_pl, end_points, loss_z, loss_m)
             tf.summary.scalar('loss', loss)
 
             correct = tf.equal(tf.argmax(pred, 1), tf.to_int64(labels_pl))
